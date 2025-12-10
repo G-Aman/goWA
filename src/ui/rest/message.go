@@ -2,6 +2,7 @@ package rest
 
 import (
 	domainMessage "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/message"
+	"github.com/aldinokemal/go-whatsapp-web-multidevice/infrastructure/whatsapp"
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 )
@@ -166,7 +167,12 @@ func (controller *Message) DownloadMedia(c *fiber.Ctx) error {
 	request.Phone = c.Query("phone")
 	utils.SanitizePhone(&request.Phone)
 
-	response, err := controller.Service.DownloadMedia(c.UserContext(), request)
+	ctx := c.UserContext()
+	if device, ok := c.Locals("device").(*whatsapp.DeviceInstance); ok {
+		ctx = whatsapp.ContextWithDevice(ctx, device)
+	}
+
+	response, err := controller.Service.DownloadMedia(ctx, request)
 	utils.PanicIfNeeded(err)
 
 	return c.JSON(utils.ResponseData{

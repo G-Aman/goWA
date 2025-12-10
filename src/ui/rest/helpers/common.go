@@ -12,7 +12,12 @@ import (
 
 func SetAutoConnectAfterBooting(service domainApp.IAppUsecase) {
 	time.Sleep(2 * time.Second)
-	_ = service.Reconnect(context.Background())
+	devices, err := service.FetchDevices(context.Background())
+	if err != nil || len(devices) == 0 {
+		logrus.Warn("auto-connect skipped: no devices available")
+		return
+	}
+	_ = service.Reconnect(context.Background(), devices[0].Device)
 }
 
 func SetAutoReconnectChecking(cli *whatsmeow.Client) {

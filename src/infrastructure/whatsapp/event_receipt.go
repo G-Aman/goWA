@@ -33,7 +33,7 @@ func getReceiptTypeDescription(evt types.ReceiptType) string {
 }
 
 // createReceiptPayload creates a webhook payload for message acknowledgement (receipt) events
-func createReceiptPayload(evt *events.Receipt) map[string]any {
+func createReceiptPayload(evt *events.Receipt, deviceID string) map[string]any {
 	body := make(map[string]any)
 
 	// Create payload structure matching the expected format
@@ -62,12 +62,15 @@ func createReceiptPayload(evt *events.Receipt) map[string]any {
 	// Add metadata for webhook processing
 	body["event"] = "message.ack"
 	body["timestamp"] = evt.Timestamp.Format(time.RFC3339)
+	if deviceID != "" {
+		body["device_id"] = deviceID
+	}
 
 	return body
 }
 
 // forwardReceiptToWebhook forwards message acknowledgement events to the configured webhook URLs
-func forwardReceiptToWebhook(ctx context.Context, evt *events.Receipt) error {
-	payload := createReceiptPayload(evt)
+func forwardReceiptToWebhook(ctx context.Context, evt *events.Receipt, deviceID string) error {
+	payload := createReceiptPayload(evt, deviceID)
 	return forwardPayloadToConfiguredWebhooks(ctx, payload, "message ack event")
 }

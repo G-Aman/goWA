@@ -13,7 +13,7 @@ import (
 )
 
 // createGroupInfoPayload creates a webhook payload for group information events
-func createGroupInfoPayload(evt *events.GroupInfo, actionType string, jids []types.JID) map[string]any {
+func createGroupInfoPayload(evt *events.GroupInfo, actionType string, jids []types.JID, deviceID string) map[string]any {
 	body := make(map[string]any)
 
 	// Create payload structure matching the expected format
@@ -32,6 +32,9 @@ func createGroupInfoPayload(evt *events.GroupInfo, actionType string, jids []typ
 	// Add metadata for webhook processing
 	body["event"] = "group.participants"
 	body["timestamp"] = evt.Timestamp.Format(time.RFC3339)
+	if deviceID != "" {
+		body["device_id"] = deviceID
+	}
 
 	return body
 }
@@ -50,7 +53,7 @@ func jidsToStrings(jids []types.JID) []string {
 }
 
 // forwardGroupInfoToWebhook forwards group information events to the configured webhook URLs
-func forwardGroupInfoToWebhook(ctx context.Context, evt *events.GroupInfo) error {
+func forwardGroupInfoToWebhook(ctx context.Context, evt *events.GroupInfo, deviceID string) error {
 	logrus.Infof("Forwarding group info event to %d configured webhook(s)", len(config.WhatsappWebhook))
 
 	// Send separate webhook events for each action type
@@ -66,7 +69,7 @@ func forwardGroupInfoToWebhook(ctx context.Context, evt *events.GroupInfo) error
 
 	for _, action := range actions {
 		if len(action.jids) > 0 {
-			payload := createGroupInfoPayload(evt, action.actionType, action.jids)
+			payload := createGroupInfoPayload(evt, action.actionType, action.jids, deviceID)
 
 			// Collect errors from all webhook URLs instead of failing fast
 			var errors []error

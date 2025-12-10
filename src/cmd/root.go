@@ -5,15 +5,17 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"go.mau.fi/whatsmeow/store/sqlstore"
 	"os"
 	"strings"
 	"time"
+
+	"go.mau.fi/whatsmeow/store/sqlstore"
 
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/config"
 	domainApp "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/app"
 	domainChat "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/chat"
 	domainChatStorage "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/chatstorage"
+	domainDevice "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/device"
 	domainGroup "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/group"
 	domainMessage "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/message"
 	domainNewsletter "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/newsletter"
@@ -50,6 +52,7 @@ var (
 	messageUsecase    domainMessage.IMessageUsecase
 	groupUsecase      domainGroup.IGroupUsecase
 	newsletterUsecase domainNewsletter.INewsletterUsecase
+	deviceUsecase     domainDevice.IDeviceUsecase
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -286,14 +289,21 @@ func initApp() {
 
 	whatsappCli = whatsapp.InitWaCLI(ctx, whatsappDB, keysDB, chatStorageRepo)
 
+	// Initialize device manager and usecase for multi-device support
+	dm := whatsapp.GetDeviceManager()
+	if dm != nil {
+		_ = dm.LoadExistingDevices(ctx)
+	}
+
 	// Usecase
-	appUsecase = usecase.NewAppService(chatStorageRepo)
+	appUsecase = usecase.NewAppService(chatStorageRepo, dm)
 	chatUsecase = usecase.NewChatService(chatStorageRepo)
 	sendUsecase = usecase.NewSendService(appUsecase, chatStorageRepo)
 	userUsecase = usecase.NewUserService()
 	messageUsecase = usecase.NewMessageService(chatStorageRepo)
 	groupUsecase = usecase.NewGroupService()
 	newsletterUsecase = usecase.NewNewsletterService()
+	deviceUsecase = usecase.NewDeviceService(dm)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

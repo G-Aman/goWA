@@ -9,8 +9,8 @@ import (
 )
 
 // forwardDeleteToWebhook sends a delete event to webhook
-func forwardDeleteToWebhook(ctx context.Context, evt *events.DeleteForMe, message *domainChatStorage.Message) error {
-	payload, err := createDeletePayload(ctx, evt, message)
+func forwardDeleteToWebhook(ctx context.Context, evt *events.DeleteForMe, message *domainChatStorage.Message, deviceID string) error {
+	payload, err := createDeletePayload(ctx, evt, message, deviceID)
 	if err != nil {
 		return err
 	}
@@ -19,7 +19,7 @@ func forwardDeleteToWebhook(ctx context.Context, evt *events.DeleteForMe, messag
 }
 
 // createDeletePayload creates a webhook payload for delete events
-func createDeletePayload(_ context.Context, evt *events.DeleteForMe, message *domainChatStorage.Message) (map[string]any, error) {
+func createDeletePayload(_ context.Context, evt *events.DeleteForMe, message *domainChatStorage.Message, deviceID string) (map[string]any, error) {
 	body := make(map[string]any)
 
 	// Basic delete event information
@@ -27,6 +27,9 @@ func createDeletePayload(_ context.Context, evt *events.DeleteForMe, message *do
 	body["deleted_message_id"] = evt.MessageID
 	body["sender_id"] = evt.SenderJID.User
 	body["timestamp"] = time.Now().Format(time.RFC3339)
+	if deviceID != "" {
+		body["device_id"] = deviceID
+	}
 
 	// Include original message information if available
 	if message != nil {

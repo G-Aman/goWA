@@ -1,8 +1,13 @@
 openapi: "3.0.0"
 info:
   title: WhatsApp API MultiDevice
-  version: 6.13.1
-  description: This API is used for sending whatsapp via API
+  version: 7.0.0
+  description: |
+    This API is used for sending whatsapp via API.
+
+    Device scoping:
+    - Send `X-Device-Id` on all device-scoped REST calls.
+    - WebSocket: connect to `/ws?device_id=<id>`.
 servers:
   - url: http://localhost:3000
 tags:
@@ -113,6 +118,10 @@ paths:
       tags:
         - app
       summary: Get list connected devices
+      description: >
+        Returns all device IDs known to the server, including placeholders
+        created via the device API. Devices are now persisted in the storage
+        registry so IDs remain stable after application restarts.
       responses:
         '200':
           description: OK
@@ -2453,6 +2462,15 @@ paths:
                 $ref: '#/components/schemas/ErrorInternalServer'
 
 components:
+  parameters:
+    DeviceIdHeader:
+      name: X-Device-Id
+      in: header
+      required: true
+      description: Device identifier (required for all device-scoped endpoints).
+      schema:
+        type: string
+
   securitySchemes:
     basicAuth:
       type: http

@@ -31,6 +31,7 @@ func (service serviceChat) ListChats(ctx context.Context, request domainChat.Lis
 
 	// Create filter from request
 	filter := &domainChatStorage.ChatFilter{
+		DeviceID:   deviceIDFromContext(ctx),
 		Limit:      request.Limit,
 		Offset:     request.Offset,
 		SearchName: request.Search,
@@ -201,6 +202,16 @@ func (service serviceChat) GetChatMessages(ctx context.Context, request domainCh
 	}).Info("Retrieved chat messages successfully")
 
 	return response, nil
+}
+
+func deviceIDFromContext(ctx context.Context) string {
+	if inst, ok := whatsapp.DeviceFromContext(ctx); ok && inst != nil {
+		if jid := inst.JID(); jid != "" {
+			return jid
+		}
+		return inst.ID()
+	}
+	return ""
 }
 
 func (service serviceChat) PinChat(ctx context.Context, request domainChat.PinChatRequest) (response domainChat.PinChatResponse, err error) {
