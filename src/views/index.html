@@ -192,15 +192,11 @@
 
     const baseHost = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
     const DEVICE_ID_HEADER = 'X-Device-Id';
-    window.httpRoot = axios.create({
-        baseURL: `${baseHost}{{ .AppBasePath }}`
-    });
     window.http = axios.create({
         baseURL: `${baseHost}{{ .AppBasePath }}`
     });
     {{ if isEnableBasicAuth .BasicAuthToken }}
     window.http.defaults.headers.common['Authorization'] = "{{ .BasicAuthToken }}";
-    window.httpRoot.defaults.headers.common['Authorization'] = "{{ .BasicAuthToken }}";
     {{ end }}
 </script>
 <script type="module">
@@ -304,10 +300,8 @@
             applyDeviceHeader(id) {
                 if (id) {
                     window.http.defaults.headers.common[DEVICE_ID_HEADER] = id;
-                    window.httpRoot.defaults.headers.common[DEVICE_ID_HEADER] = id;
                 } else {
                     delete window.http.defaults.headers.common[DEVICE_ID_HEADER];
-                    delete window.httpRoot.defaults.headers.common[DEVICE_ID_HEADER];
                     if (this.app_ws) {
                         this.app_ws.close();
                         this.app_ws = null;
@@ -364,7 +358,10 @@
 
                 this.app_ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
-                    showErrorInfo('Connection error occurred. Please refresh or re-select the device.');
+                    // Only show error notification if the device is logged in
+                    if (this.isSelectedDeviceLoggedIn) {
+                        showErrorInfo('Connection error occurred. Please refresh or re-select the device.');
+                    }
                 };
 
                 this.app_ws.onmessage = (evt) => {
@@ -422,8 +419,6 @@
                 document.getElementById('app').style.display = 'block';
                 document.getElementById('splash-screen').classList.add('fade-out');
             }, 800);
-
-            this.fetchDevices();
         },
     }).mount('#app')
 </script>

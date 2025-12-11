@@ -17,7 +17,13 @@ func SetAutoConnectAfterBooting(service domainApp.IAppUsecase) {
 		logrus.Warn("auto-connect skipped: no devices available")
 		return
 	}
-	_ = service.Reconnect(context.Background(), devices[0].Device)
+	for _, device := range devices {
+		if err := service.Reconnect(context.Background(), device.Device); err != nil {
+			logrus.Warnf("auto-connect failed for device %s: %v", device.Device, err)
+		} else {
+			logrus.Infof("auto-connected device %s", device.Device)
+		}
+	}
 }
 
 func SetAutoReconnectChecking(cli *whatsmeow.Client) {

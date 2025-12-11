@@ -524,6 +524,32 @@ func (m *DeviceManager) getOrCreateStoreDevice(ctx context.Context, deviceID str
 				return dev, nil
 			}
 		}
+
+		// If deviceID is not a valid JID, look up the device instance and use its JID
+		m.mu.RLock()
+		var instJID string
+		if inst, ok := m.devices[deviceID]; ok && inst.JID() != "" {
+			instJID = inst.JID()
+		}
+		m.mu.RUnlock()
+
+		if instJID != "" {
+			if jid, err := types.ParseJID(instJID); err == nil {
+				if dev, err := m.store.GetDevice(ctx, jid); err == nil && dev != nil {
+					return dev, nil
+				}
+				// Fallback: iterate all devices to find one with matching User (ignoring AD-ID)
+				// This handles cases where registry has Non-AD JID but store has full JID
+				if allDevices, err := m.store.GetAllDevices(ctx); err == nil {
+					targetUser := jid.User
+					for _, d := range allDevices {
+						if d != nil && d.ID != nil && d.ID.User == targetUser {
+							return d, nil
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return m.store.NewDevice(), nil

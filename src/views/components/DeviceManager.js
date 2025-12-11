@@ -12,7 +12,7 @@ export default {
             selectedDeviceId: '',
             deviceIdInput: '',
             isCreatingDevice: false,
-            deviceToDelete: { id: '', jid: '' },
+            deviceToDelete: { id: '', jid: '', state: '' },
             isDeleting: false
         }
     },
@@ -28,7 +28,7 @@ export default {
     methods: {
         async fetchDevices() {
             try {
-                const res = await window.httpRoot.get(`/devices`);
+                const res = await window.http.get(`/devices`);
                 this.deviceList = res.data.results || [];
                 if (!this.selectedDeviceId && this.deviceList.length > 0) {
                     const first = this.deviceList[0].id || this.deviceList[0].device;
@@ -53,9 +53,8 @@ export default {
             try {
                 this.isCreatingDevice = true;
                 const payload = this.deviceIdInput ? {device_id: this.deviceIdInput} : {};
-                const res = await window.httpRoot.post('/devices', payload);
+                const res = await window.http.post('/devices', payload);
                 const deviceID = res.data?.results?.id || res.data?.results?.device_id || this.deviceIdInput;
-                await this.fetchDevices();
                 this.setDeviceContext(deviceID);
                 this.deviceIdInput = '';
             } catch (err) {
@@ -73,7 +72,8 @@ export default {
             this.setDeviceContext(this.deviceIdInput);
         },
         openDeleteModal(deviceId, jid) {
-            this.deviceToDelete = { id: deviceId, jid: jid || '' };
+            const device = this.deviceList.find(d => (d.id || d.device) === deviceId);
+            this.deviceToDelete = { id: deviceId, jid: jid || '', state: device?.state || '' };
             $('#deleteDeviceModal').modal({
                 closable: false,
                 onApprove: () => {
@@ -86,7 +86,7 @@ export default {
             }).modal('show');
         },
         resetDeleteState() {
-            this.deviceToDelete = { id: '', jid: '' };
+            this.deviceToDelete = { id: '', jid: '', state: '' };
             this.isDeleting = false;
         },
         async executeDelete() {
@@ -97,7 +97,13 @@ export default {
             }
             try {
                 this.isDeleting = true;
-                await window.httpRoot.delete(`/devices/${encodeURIComponent(deviceId)}`);
+                
+                // Logout first (fire and forget), then delete
+                window.http.get(`/app/logout`, {
+                    headers: { 'X-Device-Id': deviceId }
+                }).catch(() => {});
+                
+                await window.http.delete(`/devices/${encodeURIComponent(deviceId)}`);
                 showSuccessInfo(`Device ${deviceId} deleted successfully`);
                 $('#deleteDeviceModal').modal('hide');
                 
