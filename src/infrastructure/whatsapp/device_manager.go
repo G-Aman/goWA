@@ -275,7 +275,8 @@ func (m *DeviceManager) LoadExistingDevices(ctx context.Context) error {
 		if dev == nil || dev.ID == nil {
 			continue
 		}
-		jid := dev.ID.String()
+		// Use NonAD JID to match with devices table which stores NonAD format
+		jid := dev.ID.ToNonAD().String()
 
 		// Check if device already exists by ID or JID
 		m.mu.RLock()
