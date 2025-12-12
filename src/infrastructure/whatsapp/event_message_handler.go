@@ -100,22 +100,35 @@ func handleAutoMarkRead(_ context.Context, evt *events.Message, client *whatsmeo
 }
 
 func handleWebhookForward(ctx context.Context, evt *events.Message, client *whatsmeow.Client) {
-	// Skip webhook for specific protocol messages that shouldn't trigger webhooks
+	// Skip webhook for protocol messages that are internal sync messages
 	if protocolMessage := evt.Message.GetProtocolMessage(); protocolMessage != nil {
 		protocolType := protocolMessage.GetType().String()
-		// Skip EPHEMERAL_SYNC_RESPONSE but allow REVOKE and MESSAGE_EDIT
-		if protocolType == "EPHEMERAL_SYNC_RESPONSE" {
-			log.Debugf("Skipping webhook for EPHEMERAL_SYNC_RESPONSE message")
+		// Only allow REVOKE and MESSAGE_EDIT through - skip all other protocol messages
+		// (HISTORY_SYNC_NOTIFICATION, APP_STATE_SYNC_KEY_SHARE, EPHEMERAL_SYNC_RESPONSE, etc.)
+		switch protocolType {
+		case "REVOKE", "MESSAGE_EDIT":
+			// These are meaningful user actions, allow webhook
+		default:
+			log.Debugf("Skipping webhook for protocol message type: %s", protocolType)
 			return
 		}
 	}
 
+	// Skip webhook for outgoing messages (IsFromMe) to avoid duplicate webhooks
+	// when multiple devices are connected. The sender's device receives an echo
+	// of the sent message, but we only want the recipient's device to trigger webhook.
+	// Note: Protocol messages (REVOKE, MESSAGE_EDIT) are allowed through above.
+	if evt.Info.IsFromMe {
+		log.Debugf("Skipping webhook for outgoing message %s (IsFromMe=true)", evt.Info.ID)
+		return
+	}
+
 	if len(config.WhatsappWebhook) > 0 &&
 		!strings.Contains(evt.Info.SourceString(), "broadcast") {
-		go func(evt *events.Message) {
-			if err := forwardMessageToWebhook(ctx, client, evt); err != nil {
+		go func(e *events.Message, c *whatsmeow.Client) {
+			if err := forwardMessageToWebhook(ctx, c, e); err != nil {
 				logrus.Error("Failed forward to webhook: ", err)
 			}
-		}(evt)
+		}(evt, client)
 	}
 }

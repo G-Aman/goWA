@@ -31,7 +31,7 @@ func handler(ctx context.Context, instance *DeviceInstance, rawEvt any) {
 
 	switch evt := rawEvt.(type) {
 	case *events.DeleteForMe:
-		handleDeleteForMe(ctx, evt, chatStorageRepo, instance.ID())
+		handleDeleteForMe(ctx, evt, chatStorageRepo, instance.JID(), client)
 	case *events.AppStateSyncComplete:
 		handleAppStateSyncComplete(ctx, client, evt)
 	case *events.PairSuccess:
@@ -45,7 +45,7 @@ func handler(ctx context.Context, instance *DeviceInstance, rawEvt any) {
 	case *events.Message:
 		handleMessage(ctx, evt, chatStorageRepo, client)
 	case *events.Receipt:
-		handleReceipt(ctx, evt, instance.ID())
+		handleReceipt(ctx, evt, instance.JID(), client)
 	case *events.Presence:
 		handlePresence(ctx, evt)
 	case *events.HistorySync:
@@ -53,13 +53,13 @@ func handler(ctx context.Context, instance *DeviceInstance, rawEvt any) {
 	case *events.AppState:
 		handleAppState(ctx, evt)
 	case *events.GroupInfo:
-		handleGroupInfo(ctx, evt, instance.ID())
+		handleGroupInfo(ctx, evt, instance.JID(), client)
 	}
 
 	instance.UpdateStateFromClient()
 }
 
-func handleDeleteForMe(ctx context.Context, evt *events.DeleteForMe, chatStorageRepo domainChatStorage.IChatStorageRepository, deviceID string) {
+func handleDeleteForMe(ctx context.Context, evt *events.DeleteForMe, chatStorageRepo domainChatStorage.IChatStorageRepository, deviceID string, client *whatsmeow.Client) {
 	log.Infof("Deleted message %s for %s", evt.MessageID, evt.SenderJID.String())
 
 	// Find the message to get its chat JID
@@ -83,11 +83,11 @@ func handleDeleteForMe(ctx context.Context, evt *events.DeleteForMe, chatStorage
 
 	// Send webhook notification for delete event
 	if len(config.WhatsappWebhook) > 0 {
-		go func() {
-			if err := forwardDeleteToWebhook(ctx, evt, message, deviceID); err != nil {
+		go func(c *whatsmeow.Client) {
+			if err := forwardDeleteToWebhook(ctx, evt, message, deviceID, c); err != nil {
 				log.Errorf("Failed to forward delete event to webhook: %v", err)
 			}
-		}()
+		}(client)
 	}
 }
 
@@ -175,7 +175,7 @@ func handleStreamReplaced(_ context.Context) {
 	os.Exit(0)
 }
 
-func handleReceipt(ctx context.Context, evt *events.Receipt, deviceID string) {
+func handleReceipt(ctx context.Context, evt *events.Receipt, deviceID string, client *whatsmeow.Client) {
 	sendReceipt := false
 	switch evt.Type {
 	case types.ReceiptTypeRead, types.ReceiptTypeReadSelf:
@@ -189,11 +189,11 @@ func handleReceipt(ctx context.Context, evt *events.Receipt, deviceID string) {
 	// Forward receipt (ack) event to webhook if configured
 	// Note: Receipt events are not rate limited as they are critical for message delivery status
 	if len(config.WhatsappWebhook) > 0 && sendReceipt {
-		go func(e *events.Receipt) {
-			if err := forwardReceiptToWebhook(ctx, e, deviceID); err != nil {
+		go func(e *events.Receipt, c *whatsmeow.Client) {
+			if err := forwardReceiptToWebhook(ctx, e, deviceID, c); err != nil {
 				logrus.Errorf("Failed to forward ack event to webhook: %v", err)
 			}
-		}(evt)
+		}(evt, client)
 	}
 }
 
@@ -213,7 +213,7 @@ func handleAppState(_ context.Context, evt *events.AppState) {
 	log.Debugf("App state event: %+v / %+v", evt.Index, evt.SyncActionValue)
 }
 
-func handleGroupInfo(ctx context.Context, evt *events.GroupInfo, deviceID string) {
+func handleGroupInfo(ctx context.Context, evt *events.GroupInfo, deviceID string, client *whatsmeow.Client) {
 	// Only process events that have actual changes
 	hasChanges := len(evt.Join) > 0 || len(evt.Leave) > 0 || len(evt.Promote) > 0 || len(evt.Demote) > 0 ||
 		evt.Name != nil || evt.Topic != nil || evt.Locked != nil || evt.Announce != nil
@@ -238,10 +238,10 @@ func handleGroupInfo(ctx context.Context, evt *events.GroupInfo, deviceID string
 
 	// Forward group info event to webhook if configured
 	if len(config.WhatsappWebhook) > 0 {
-		go func(e *events.GroupInfo) {
-			if err := forwardGroupInfoToWebhook(ctx, e, deviceID); err != nil {
+		go func(e *events.GroupInfo, c *whatsmeow.Client) {
+			if err := forwardGroupInfoToWebhook(ctx, e, deviceID, c); err != nil {
 				logrus.Errorf("Failed to forward group info event to webhook: %v", err)
 			}
-		}(evt)
+		}(evt, client)
 	}
 }
