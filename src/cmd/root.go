@@ -84,6 +84,9 @@ func initEnvConfig() {
 	if envPort := viper.GetString("app_port"); envPort != "" {
 		config.AppPort = envPort
 	}
+	if envHost := viper.GetString("app_host"); envHost != "" {
+		config.AppHost = envHost
+	}
 	if envDebug := viper.GetBool("app_debug"); envDebug {
 		config.AppDebug = envDebug
 	}
@@ -142,6 +145,13 @@ func initFlags() {
 		"port", "p",
 		config.AppPort,
 		"change port number with --port <number> | example: --port=8080",
+	)
+
+	rootCmd.PersistentFlags().StringVarP(
+		&config.AppHost,
+		"host", "H",
+		config.AppHost,
+		`host to bind the server --host <string> | example: --host="127.0.0.1"`,
 	)
 
 	rootCmd.PersistentFlags().BoolVarP(

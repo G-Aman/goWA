@@ -136,7 +136,7 @@ func restServer(_ *cobra.Command, _ []string) {
 	// Set auto reconnect checking with a guaranteed client instance
 	startAutoReconnectCheckerIfClientAvailable()
 
-	if err := app.Listen(":" + config.AppPort); err != nil {
+	if err := app.Listen(config.AppHost + ":" + config.AppPort); err != nil {
 		logrus.Fatalln("Failed to start: ", err.Error())
 	}
 }

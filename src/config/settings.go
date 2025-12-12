@@ -7,6 +7,7 @@ import (
 var (
 	AppVersion             = "v8.0.0"
 	AppPort                = "3000"
+	AppHost                = "0.0.0.0"
 	AppDebug               = false
 	AppOs                  = "AldinoKemal"
 	AppPlatform            = waCompanionReg.DeviceProps_PlatformType(1)

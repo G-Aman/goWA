@@ -130,6 +130,7 @@ To use environment variables:
 | Variable                      | Description                                 | Default                                      | Example                                     |
 |-------------------------------|---------------------------------------------|----------------------------------------------|---------------------------------------------|
 | `APP_PORT`                    | Application port                            | `3000`                                       | `APP_PORT=8080`                             |
+| `APP_HOST`                    | Host address to bind the server             | `0.0.0.0`                                    | `APP_HOST=127.0.0.1`                        |
 | `APP_DEBUG`                   | Enable debug logging                        | `false`                                      | `APP_DEBUG=true`                            |
 | `APP_OS`                      | OS name (device name in WhatsApp)           | `Chrome`                                     | `APP_OS=MyApp`                              |
 | `APP_BASIC_AUTH`              | Basic authentication credentials            | -                                            | `APP_BASIC_AUTH=user1:pass1,user2:pass2`    |
