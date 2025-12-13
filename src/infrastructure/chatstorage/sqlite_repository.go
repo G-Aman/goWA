@@ -30,17 +30,22 @@ func (r *SQLiteRepository) StoreChat(chat *domainChatStorage.Chat) error {
 	now := time.Now()
 	chat.UpdatedAt = now
 
-	query := `
-		INSERT INTO chats (jid, device_id, name, last_message_time, ephemeral_expiration, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(jid, device_id) DO UPDATE SET
-			name = excluded.name,
-			last_message_time = excluded.last_message_time,
-			ephemeral_expiration = excluded.ephemeral_expiration,
-			updated_at = excluded.updated_at
-	`
+	// Try update first, then insert if no rows affected (cross-db compatible)
+	result, err := r.db.Exec(`
+		UPDATE chats SET name = ?, last_message_time = ?, ephemeral_expiration = ?, updated_at = ?
+		WHERE jid = ? AND device_id = ?
+	`, chat.Name, chat.LastMessageTime, chat.EphemeralExpiration, chat.UpdatedAt, chat.JID, chat.DeviceID)
+	if err != nil {
+		return err
+	}
 
-	_, err := r.db.Exec(query, chat.JID, chat.DeviceID, chat.Name, chat.LastMessageTime, chat.EphemeralExpiration, now, chat.UpdatedAt)
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		_, err = r.db.Exec(`
+			INSERT INTO chats (jid, device_id, name, last_message_time, ephemeral_expiration, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, chat.JID, chat.DeviceID, chat.Name, chat.LastMessageTime, chat.EphemeralExpiration, now, chat.UpdatedAt)
+	}
 	return err
 }
 
@@ -175,38 +180,36 @@ func (r *SQLiteRepository) StoreMessage(message *domainChatStorage.Message) erro
 
 	// Skip empty messages
 	if message.Content == "" && message.MediaType == "" {
-		// This is not an error, just skip storing empty messages
 		return nil
 	}
 
-	query := `
-		INSERT INTO messages (
-			id, chat_jid, device_id, sender, content, timestamp, is_from_me, 
-			media_type, filename, url, media_key, file_sha256, 
-			file_enc_sha256, file_length, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id, chat_jid, device_id) DO UPDATE SET
-			sender = excluded.sender,
-			content = excluded.content,
-			timestamp = excluded.timestamp,
-			is_from_me = excluded.is_from_me,
-			media_type = excluded.media_type,
-			filename = excluded.filename,
-			url = excluded.url,
-			media_key = excluded.media_key,
-			file_sha256 = excluded.file_sha256,
-			file_enc_sha256 = excluded.file_enc_sha256,
-			file_length = excluded.file_length,
-			updated_at = excluded.updated_at
-	`
+	// Try update first, then insert if no rows affected (cross-db compatible)
+	result, err := r.db.Exec(`
+		UPDATE messages SET sender = ?, content = ?, timestamp = ?, is_from_me = ?,
+			media_type = ?, filename = ?, url = ?, media_key = ?, file_sha256 = ?,
+			file_enc_sha256 = ?, file_length = ?, updated_at = ?
+		WHERE id = ? AND chat_jid = ? AND device_id = ?
+	`, message.Sender, message.Content, message.Timestamp, message.IsFromMe,
+		message.MediaType, message.Filename, message.URL, message.MediaKey, message.FileSHA256,
+		message.FileEncSHA256, message.FileLength, message.UpdatedAt,
+		message.ID, message.ChatJID, message.DeviceID)
+	if err != nil {
+		return err
+	}
 
-	_, err := r.db.Exec(query,
-		message.ID, message.ChatJID, message.DeviceID, message.Sender, message.Content,
-		message.Timestamp, message.IsFromMe, message.MediaType, message.Filename,
-		message.URL, message.MediaKey, message.FileSHA256, message.FileEncSHA256,
-		message.FileLength, message.CreatedAt, message.UpdatedAt,
-	)
-
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		_, err = r.db.Exec(`
+			INSERT INTO messages (
+				id, chat_jid, device_id, sender, content, timestamp, is_from_me,
+				media_type, filename, url, media_key, file_sha256,
+				file_enc_sha256, file_length, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, message.ID, message.ChatJID, message.DeviceID, message.Sender, message.Content,
+			message.Timestamp, message.IsFromMe, message.MediaType, message.Filename,
+			message.URL, message.MediaKey, message.FileSHA256, message.FileEncSHA256,
+			message.FileLength, message.CreatedAt, message.UpdatedAt)
+	}
 	return err
 }
 
@@ -222,35 +225,32 @@ func (r *SQLiteRepository) StoreMessagesBatch(messages []*domainChatStorage.Mess
 	}
 	defer tx.Rollback()
 
-	// Prepare the statement once for better performance
-	stmt, err := tx.Prepare(`
-		INSERT INTO messages (
-			id, chat_jid, device_id, sender, content, timestamp, is_from_me, 
-			media_type, filename, url, media_key, file_sha256, 
-			file_enc_sha256, file_length, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id, chat_jid, device_id) DO UPDATE SET
-			sender = excluded.sender,
-			content = excluded.content,
-			timestamp = excluded.timestamp,
-			is_from_me = excluded.is_from_me,
-			media_type = excluded.media_type,
-			filename = excluded.filename,
-			url = excluded.url,
-			media_key = excluded.media_key,
-			file_sha256 = excluded.file_sha256,
-			file_enc_sha256 = excluded.file_enc_sha256,
-			file_length = excluded.file_length,
-			updated_at = excluded.updated_at
+	// Prepare statements for update and insert
+	updateStmt, err := tx.Prepare(`
+		UPDATE messages SET sender = ?, content = ?, timestamp = ?, is_from_me = ?,
+			media_type = ?, filename = ?, url = ?, media_key = ?, file_sha256 = ?,
+			file_enc_sha256 = ?, file_length = ?, updated_at = ?
+		WHERE id = ? AND chat_jid = ? AND device_id = ?
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
+		return fmt.Errorf("failed to prepare update statement: %w", err)
 	}
-	defer stmt.Close()
+	defer updateStmt.Close()
+
+	insertStmt, err := tx.Prepare(`
+		INSERT INTO messages (
+			id, chat_jid, device_id, sender, content, timestamp, is_from_me,
+			media_type, filename, url, media_key, file_sha256,
+			file_enc_sha256, file_length, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert statement: %w", err)
+	}
+	defer insertStmt.Close()
 
 	now := time.Now()
 	for _, message := range messages {
-		// Skip empty messages
 		if message.Content == "" && message.MediaType == "" {
 			continue
 		}
@@ -258,14 +258,27 @@ func (r *SQLiteRepository) StoreMessagesBatch(messages []*domainChatStorage.Mess
 		message.CreatedAt = now
 		message.UpdatedAt = now
 
-		_, err = stmt.Exec(
-			message.ID, message.ChatJID, message.DeviceID, message.Sender, message.Content,
-			message.Timestamp, message.IsFromMe, message.MediaType, message.Filename,
-			message.URL, message.MediaKey, message.FileSHA256, message.FileEncSHA256,
-			message.FileLength, message.CreatedAt, message.UpdatedAt,
+		result, err := updateStmt.Exec(
+			message.Sender, message.Content, message.Timestamp, message.IsFromMe,
+			message.MediaType, message.Filename, message.URL, message.MediaKey, message.FileSHA256,
+			message.FileEncSHA256, message.FileLength, message.UpdatedAt,
+			message.ID, message.ChatJID, message.DeviceID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to store message %s: %w", message.ID, err)
+			return fmt.Errorf("failed to update message %s: %w", message.ID, err)
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			_, err = insertStmt.Exec(
+				message.ID, message.ChatJID, message.DeviceID, message.Sender, message.Content,
+				message.Timestamp, message.IsFromMe, message.MediaType, message.Filename,
+				message.URL, message.MediaKey, message.FileSHA256, message.FileEncSHA256,
+				message.FileLength, message.CreatedAt, message.UpdatedAt,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to insert message %s: %w", message.ID, err)
+			}
 		}
 	}
 
@@ -511,14 +524,22 @@ func (r *SQLiteRepository) SaveDeviceRecord(record *domainChatStorage.DeviceReco
 	}
 	record.UpdatedAt = now
 
-	_, err := r.db.Exec(`
-		INSERT INTO devices (device_id, display_name, jid, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(device_id) DO UPDATE SET
-			display_name = excluded.display_name,
-			jid = excluded.jid,
-			updated_at = excluded.updated_at
-	`, record.DeviceID, record.DisplayName, record.JID, record.CreatedAt, record.UpdatedAt)
+	// Try update first, then insert if no rows affected (cross-db compatible)
+	result, err := r.db.Exec(`
+		UPDATE devices SET display_name = ?, jid = ?, updated_at = ?
+		WHERE device_id = ?
+	`, record.DisplayName, record.JID, record.UpdatedAt, record.DeviceID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		_, err = r.db.Exec(`
+			INSERT INTO devices (device_id, display_name, jid, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, record.DeviceID, record.DisplayName, record.JID, record.CreatedAt, record.UpdatedAt)
+	}
 	return err
 }
 
@@ -866,7 +887,7 @@ func (r *SQLiteRepository) getSchemaVersion() (int, error) {
 	// Create schema_info table if it doesn't exist
 	_, err := r.db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_info (
-			version INTEGER PRIMARY KEY DEFAULT 0,
+			version INTEGER PRIMARY KEY,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
@@ -886,53 +907,47 @@ func (r *SQLiteRepository) getSchemaVersion() (int, error) {
 
 // runMigration executes a migration
 func (r *SQLiteRepository) runMigration(migration string, version int) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Execute migration
-	if _, err := tx.Exec(migration); err != nil {
+	// Execute migration (single statement)
+	if _, err := r.db.Exec(migration); err != nil {
 		return err
 	}
 
-	// Update schema version
-	if _, err := tx.Exec("INSERT OR REPLACE INTO schema_info (version) VALUES (?)", version); err != nil {
+	// Update schema version - delete then insert for cross-db compatibility
+	_, _ = r.db.Exec("DELETE FROM schema_info WHERE version = ?", version)
+	if _, err := r.db.Exec("INSERT INTO schema_info (version) VALUES (?)", version); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // getMigrations returns all database migrations
+// Compatible with SQLite, MySQL, and PostgreSQL
 func (r *SQLiteRepository) getMigrations() []string {
 	return []string{
-		// Migration 1: Initial schema with chats and messages tables (messages include device_id)
-		`
-		-- Create chats table with device_id
-		CREATE TABLE IF NOT EXISTS chats (
-			jid TEXT NOT NULL,
-			device_id TEXT NOT NULL DEFAULT '',
-			name TEXT NOT NULL,
+		// Migration 1: Create chats table
+		`CREATE TABLE IF NOT EXISTS chats (
+			jid VARCHAR(255) NOT NULL,
+			device_id VARCHAR(255) NOT NULL DEFAULT '',
+			name VARCHAR(255) NOT NULL,
 			last_message_time TIMESTAMP NOT NULL,
 			ephemeral_expiration INTEGER DEFAULT 0,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (jid, device_id)
-		);
+		)`,
 
-		-- Create messages table with device_id to match chats composite key
-		CREATE TABLE IF NOT EXISTS messages (
-			id TEXT NOT NULL,
-			chat_jid TEXT NOT NULL,
-			device_id TEXT NOT NULL DEFAULT '',
-			sender TEXT NOT NULL,
+		// Migration 2: Create messages table
+		`CREATE TABLE IF NOT EXISTS messages (
+			id VARCHAR(255) NOT NULL,
+			chat_jid VARCHAR(255) NOT NULL,
+			device_id VARCHAR(255) NOT NULL DEFAULT '',
+			sender VARCHAR(255) NOT NULL,
 			content TEXT,
 			timestamp TIMESTAMP NOT NULL,
 			is_from_me BOOLEAN DEFAULT FALSE,
-			media_type TEXT,
-			filename TEXT,
+			media_type VARCHAR(50),
+			filename VARCHAR(255),
 			url TEXT,
 			media_key BLOB,
 			file_sha256 BLOB,
@@ -940,82 +955,43 @@ func (r *SQLiteRepository) getMigrations() []string {
 			file_length INTEGER DEFAULT 0,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (id, chat_jid, device_id),
-			FOREIGN KEY (chat_jid, device_id) REFERENCES chats(jid, device_id) ON DELETE CASCADE
-		);
+			PRIMARY KEY (id, chat_jid, device_id)
+		)`,
 
-		-- Create devices registry table
-		CREATE TABLE IF NOT EXISTS devices (
-			device_id TEXT PRIMARY KEY,
-			display_name TEXT DEFAULT '',
-			jid TEXT DEFAULT '',
+		// Migration 3: Create devices table
+		`CREATE TABLE IF NOT EXISTS devices (
+			device_id VARCHAR(255) PRIMARY KEY,
+			display_name VARCHAR(255) DEFAULT '',
+			jid VARCHAR(255) DEFAULT '',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
+		)`,
 
-		-- Create indexes for performance
-		CREATE INDEX IF NOT EXISTS idx_messages_chat_jid ON messages(chat_jid);
-		CREATE INDEX IF NOT EXISTS idx_messages_chat_device ON messages(device_id);
-		CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
-		CREATE INDEX IF NOT EXISTS idx_messages_media_type ON messages(media_type);
-		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender);
-		CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id);
-		CREATE INDEX IF NOT EXISTS idx_chats_last_message ON chats(last_message_time);
-		CREATE INDEX IF NOT EXISTS idx_chats_name ON chats(name);
-		CREATE INDEX IF NOT EXISTS idx_chats_device ON chats(device_id);
-		CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at);
-		`,
-		// Migration 2: Recreate chats/messages to enforce composite FK (breaking change; data loss accepted)
-		`
-		PRAGMA foreign_keys=off;
-		DROP TABLE IF EXISTS messages;
-		DROP TABLE IF EXISTS chats;
-		PRAGMA foreign_keys=on;
+		// Migration 4: Create indexes for messages
+		`CREATE INDEX IF NOT EXISTS idx_messages_chat_jid ON messages(chat_jid)`,
 
-		-- Recreate chats table
-		CREATE TABLE IF NOT EXISTS chats (
-			jid TEXT NOT NULL,
-			device_id TEXT NOT NULL DEFAULT '',
-			name TEXT NOT NULL,
-			last_message_time TIMESTAMP NOT NULL,
-			ephemeral_expiration INTEGER DEFAULT 0,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (jid, device_id)
-		);
+		// Migration 5
+		`CREATE INDEX IF NOT EXISTS idx_messages_device ON messages(device_id)`,
 
-		-- Recreate messages table with device_id
-		CREATE TABLE IF NOT EXISTS messages (
-			id TEXT NOT NULL,
-			chat_jid TEXT NOT NULL,
-			device_id TEXT NOT NULL DEFAULT '',
-			sender TEXT NOT NULL,
-			content TEXT,
-			timestamp TIMESTAMP NOT NULL,
-			is_from_me BOOLEAN DEFAULT FALSE,
-			media_type TEXT,
-			filename TEXT,
-			url TEXT,
-			media_key BLOB,
-			file_sha256 BLOB,
-			file_enc_sha256 BLOB,
-			file_length INTEGER DEFAULT 0,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (id, chat_jid, device_id),
-			FOREIGN KEY (chat_jid, device_id) REFERENCES chats(jid, device_id) ON DELETE CASCADE
-		);
+		// Migration 6
+		`CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)`,
 
-		-- Recreate indexes
-		CREATE INDEX IF NOT EXISTS idx_messages_chat_jid ON messages(chat_jid);
-		CREATE INDEX IF NOT EXISTS idx_messages_chat_device ON messages(device_id);
-		CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
-		CREATE INDEX IF NOT EXISTS idx_messages_media_type ON messages(media_type);
-		CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender);
-		CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id);
-		CREATE INDEX IF NOT EXISTS idx_chats_last_message ON chats(last_message_time);
-		CREATE INDEX IF NOT EXISTS idx_chats_name ON chats(name);
-		CREATE INDEX IF NOT EXISTS idx_chats_device ON chats(device_id);
-		`,
+		// Migration 7
+		`CREATE INDEX IF NOT EXISTS idx_messages_media_type ON messages(media_type)`,
+
+		// Migration 8
+		`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender)`,
+
+		// Migration 9: Create indexes for chats
+		`CREATE INDEX IF NOT EXISTS idx_chats_last_message ON chats(last_message_time)`,
+
+		// Migration 10
+		`CREATE INDEX IF NOT EXISTS idx_chats_name ON chats(name)`,
+
+		// Migration 11
+		`CREATE INDEX IF NOT EXISTS idx_chats_device ON chats(device_id)`,
+
+		// Migration 12: Create index for devices
+		`CREATE INDEX IF NOT EXISTS idx_devices_created_at ON devices(created_at)`,
 	}
 }
