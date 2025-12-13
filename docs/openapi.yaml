@@ -144,6 +144,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorInternalServer'
+  /app/status:
+    get:
+      operationId: appStatus
+      tags:
+        - app
+      summary: Get connection status
+      description: Check whether the WhatsApp client is connected and logged in
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  code:
+                    type: string
+                    example: SUCCESS
+                  message:
+                    type: string
+                    example: Connection status retrieved
+                  results:
+                    type: object
+                    properties:
+                      is_connected:
+                        type: boolean
+                        description: Whether the device is connected to WhatsApp servers
+                      is_logged_in:
+                        type: boolean
+                        description: Whether the device is logged in to WhatsApp
+                      device_id:
+                        type: string
+                        description: The device ID
+                        example: '6289685028129@s.whatsapp.net'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBadRequest'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
 
   # Device Management API (v8)
   /devices:
@@ -1726,7 +1777,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorInternalServer'
-  
+  /message/{message_id}/download:
+    get:
+      operationId: downloadMessageMedia
+      tags:
+        - message
+      summary: Download media from message
+      description: Download media content (image, video, audio, document) from a message
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
+        - in: path
+          name: message_id
+          schema:
+            type: string
+          required: true
+          description: Message ID
+          example: '3EB0123456789ABCDEF'
+        - in: query
+          name: phone
+          schema:
+            type: string
+          required: true
+          description: Phone number with country code
+          example: '6289685028129@s.whatsapp.net'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  code:
+                    type: string
+                    example: SUCCESS
+                  message:
+                    type: string
+                    example: Media downloaded successfully
+                  results:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: Media downloaded successfully
+                      mime_type:
+                        type: string
+                        example: image/jpeg
+                      file_size:
+                        type: integer
+                        example: 524288
+                      file_name:
+                        type: string
+                        example: image.jpg
+                      data:
+                        type: string
+                        format: byte
+                        description: Base64 encoded media data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBadRequest'
+        '404':
+          description: Message or media not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
   /chats:
     get:
       operationId: listChats

@@ -441,11 +441,21 @@ You can fork or edit this source code !
 
 | Feature | Menu                                   | Method | URL                                 |
 |---------|----------------------------------------|--------|-------------------------------------|
+| ✅       | List Devices                           | GET    | /devices                            |
+| ✅       | Add Device                             | POST   | /devices                            |
+| ✅       | Get Device Info                        | GET    | /devices/:device_id                 |
+| ✅       | Remove Device                          | DELETE | /devices/:device_id                 |
+| ✅       | Login Device (QR)                      | GET    | /devices/:device_id/login           |
+| ✅       | Login Device (Code)                    | POST   | /devices/:device_id/login/code      |
+| ✅       | Logout Device                          | POST   | /devices/:device_id/logout          |
+| ✅       | Reconnect Device                       | POST   | /devices/:device_id/reconnect       |
+| ✅       | Get Device Status                      | GET    | /devices/:device_id/status          |
 | ✅       | Login with Scan QR                     | GET    | /app/login                          |
 | ✅       | Login With Pair Code                   | GET    | /app/login-with-code                |
-| ✅       | Logout                                 | GET    | /app/logout                         |  
+| ✅       | Logout                                 | GET    | /app/logout                         |
 | ✅       | Reconnect                              | GET    | /app/reconnect                      |
 | ✅       | Devices                                | GET    | /app/devices                        |
+| ✅       | Connection Status                      | GET    | /app/status                         |
 | ✅       | User Info                              | GET    | /user/info                          |
 | ✅       | User Avatar                            | GET    | /user/avatar                        |
 | ✅       | User Change Avatar                     | POST   | /user/avatar                        |
@@ -475,6 +485,7 @@ You can fork or edit this source code !
 | ✅       | Read Message (DM)                      | POST   | /message/:message_id/read           |
 | ✅       | Star Message                           | POST   | /message/:message_id/star           |
 | ✅       | Unstar Message                         | POST   | /message/:message_id/unstar         |
+| ✅       | Download Message Media                 | GET    | /message/:message_id/download       |
 | ✅       | Join Group With Link                   | POST   | /group/join-with-link               |
 | ✅       | Group Info From Link                   | GET    | /group/info-from-link               |
 | ✅       | Group Info                             | GET    | /group/info                         |
