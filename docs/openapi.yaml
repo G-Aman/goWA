@@ -1,7 +1,7 @@
 openapi: "3.0.0"
 info:
   title: WhatsApp API MultiDevice
-  version: 7.0.0
+  version: 8.0.0
   description: |
     This API is used for sending whatsapp via API.
 
@@ -13,6 +13,8 @@ servers:
 tags:
   - name: app
     description: Initial Connection to Whatsapp server
+  - name: device
+    description: Device management for multi-device support
   - name: user
     description: Getting information
   - name: send
@@ -135,6 +137,307 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorInternalServer'
+
+  # Device Management API (v8)
+  /devices:
+    get:
+      operationId: listDevices
+      tags:
+        - device
+      summary: List all devices
+      description: Returns all registered devices with their connection status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceListResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+    post:
+      operationId: addDevice
+      tags:
+        - device
+      summary: Add a new device
+      description: Create a new device slot for multi-device management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                  description: Optional custom device ID. If not provided, one will be generated.
+                  example: 'my-custom-device-id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceAddResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBadRequest'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}:
+    get:
+      operationId: getDevice
+      tags:
+        - device
+      summary: Get device info
+      description: Get detailed information about a specific device
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceInfoResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+    delete:
+      operationId: removeDevice
+      tags:
+        - device
+      summary: Remove a device
+      description: Remove a device from the server (does not logout from WhatsApp)
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}/login:
+    get:
+      operationId: loginDevice
+      tags:
+        - device
+      summary: Login device with QR code
+      description: Initiate QR code login for a specific device
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}/login/code:
+    post:
+      operationId: loginDeviceWithCode
+      tags:
+        - device
+      summary: Login device with pairing code
+      description: Initiate pairing code login for a specific device
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '628912344551'
+          description: Phone number to pair with
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginWithCodeResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}/logout:
+    post:
+      operationId: logoutDevice
+      tags:
+        - device
+      summary: Logout device
+      description: Logout a specific device from WhatsApp and remove its session
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}/reconnect:
+    post:
+      operationId: reconnectDevice
+      tags:
+        - device
+      summary: Reconnect device
+      description: Reconnect a specific device to WhatsApp
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
+  /devices/{device_id}/status:
+    get:
+      operationId: getDeviceStatus
+      tags:
+        - device
+      summary: Get device connection status
+      description: Get the current connection status of a specific device
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Device ID
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStatusResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorNotFound'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorInternalServer'
+
   /user/info:
     get:
       operationId: userInfo
@@ -2825,6 +3128,100 @@ components:
               device:
                 type: string
                 example: '628960561XXX.0:64@s.whatsapp.net'
+
+    # Device Management Schemas (v8)
+    DeviceListResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: SUCCESS
+        message:
+          type: string
+          example: List devices
+        status:
+          type: integer
+          example: 200
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceInfo'
+    DeviceAddResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: SUCCESS
+        message:
+          type: string
+          example: Device added
+        status:
+          type: integer
+          example: 200
+        results:
+          $ref: '#/components/schemas/DeviceInfo'
+    DeviceInfoResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: SUCCESS
+        message:
+          type: string
+          example: Device info
+        status:
+          type: integer
+          example: 200
+        results:
+          $ref: '#/components/schemas/DeviceInfo'
+    DeviceStatusResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: SUCCESS
+        message:
+          type: string
+          example: Device status
+        status:
+          type: integer
+          example: 200
+        results:
+          type: object
+          properties:
+            device_id:
+              type: string
+              example: 'my-device-id'
+            is_connected:
+              type: boolean
+              example: true
+            is_logged_in:
+              type: boolean
+              example: true
+    DeviceInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 'my-device-id'
+        phone_number:
+          type: string
+          example: '628123456789'
+        display_name:
+          type: string
+          example: 'John Doe'
+        state:
+          type: string
+          enum: [disconnected, connected, logged_in]
+          example: 'logged_in'
+        jid:
+          type: string
+          example: '628123456789@s.whatsapp.net'
+        created_at:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00Z'
+
     LoginWithCodeResponse:
       type: object
       properties:

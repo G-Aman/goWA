@@ -40,6 +40,23 @@ Download:
 - `v7`
   - Starting version 7.x we are using goreleaser to build the binary, so you can download the binary
       from [release](https://github.com/aldinokemal/go-whatsapp-web-multidevice/releases/latest)
+- `v8`
+  - **Multi-device support**: You can now connect and manage multiple WhatsApp accounts simultaneously in a single server instance
+  - **New Device Management API**: New endpoints under `/devices` for managing multiple devices
+  - **Device scoping required**: All device-scoped REST API calls now require either:
+    - `X-Device-Id` header, or
+    - `device_id` query parameter
+    - If only one device is registered, it will be used as the default
+  - **WebSocket device scoping**: Connect to `/ws?device_id=<id>` to scope WebSocket to a specific device
+  - **Webhook payload changes**: All webhook payloads now include a top-level `device_id` field identifying which device received the event:
+
+    ```json
+    {
+      "event": "message",
+      "device_id": "628123456789@s.whatsapp.net",
+      "payload": { ... }
+    }
+    ```
 
 ## Feature
 
@@ -86,6 +103,7 @@ Download:
 - **Webhook TLS Configuration**
 
   If you encounter TLS certificate verification errors when using webhooks (e.g., with Cloudflare tunnels or self-signed certificates):
+
   ```
   tls: failed to verify certificate: x509: certificate signed by unknown authority
   ```
