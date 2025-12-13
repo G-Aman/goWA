@@ -37,6 +37,8 @@ paths:
       tags:
         - app
       summary: Login to whatsapp server
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -57,6 +59,7 @@ paths:
         - app
       summary: Login with pairing code
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: phone
           in: query
           schema:
@@ -82,6 +85,8 @@ paths:
       tags:
         - app
       summary: Remove database and logout
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -101,6 +106,8 @@ paths:
       tags:
         - app
       summary: Reconnecting to whatsapp server
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -445,6 +452,7 @@ paths:
         - user
       summary: User Info
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: phone
           in: query
           schema:
@@ -477,6 +485,7 @@ paths:
         - user
       summary: User Avatar
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: phone
           in: query
           schema:
@@ -519,6 +528,8 @@ paths:
       tags:
         - user
       summary: User Change Avatar
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -555,6 +566,8 @@ paths:
         - user
       summary: User Change Push Name
       description: Update the display name (push name) shown to others in WhatsApp
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -592,6 +605,8 @@ paths:
       tags:
         - user
       summary: User My Privacy Setting
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -611,6 +626,8 @@ paths:
       tags:
         - user
       summary: User My List Groups
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -631,6 +648,8 @@ paths:
       tags:
         - user
       summary: User My List Groups
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -650,6 +669,8 @@ paths:
       tags:
         - user
       summary: Get list of user contacts
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       responses:
         '200':
           description: OK
@@ -670,6 +691,7 @@ paths:
         - user
       summary: Check if user is on WhatsApp
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: phone
           in: query
           schema:
@@ -703,6 +725,7 @@ paths:
       summary: Get Business Profile Information
       description: Retrieve detailed business profile information for a WhatsApp business account
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: phone
           in: query
           required: true
@@ -736,6 +759,8 @@ paths:
       tags:
         - send
       summary: Send Message
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -787,6 +812,8 @@ paths:
       tags:
         - send
       summary: Send Image
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -850,6 +877,8 @@ paths:
       tags:
         - send
       summary: Send Audio
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -901,6 +930,8 @@ paths:
       tags:
         - send
       summary: Send File
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -953,6 +984,8 @@ paths:
         - send
       summary: Send Sticker
       description: Send sticker with automatic conversion to WebP format
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -1004,6 +1037,8 @@ paths:
       tags:
         - send
       summary: Send Video
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -1067,6 +1102,8 @@ paths:
       tags:
         - send
       summary: Send Contact
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -1118,6 +1155,8 @@ paths:
       tags:
         - send
       summary: Send Link
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -1169,6 +1208,8 @@ paths:
       tags:
         - send
       summary: Send Location
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -1220,6 +1261,8 @@ paths:
       tags:
         - send
       summary: Send Poll / Vote
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         required: true
         content:
@@ -1279,6 +1322,8 @@ paths:
       tags:
         - send
       summary: Send presence status
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         required: true
         content:
@@ -1323,6 +1368,8 @@ paths:
         - send
       summary: Send chat presence (typing indicator)
       description: Send typing indicator to start or stop showing that you are composing a message
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         required: true
         content:
@@ -1368,6 +1415,7 @@ paths:
         - message
       summary: Revoke Message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1410,6 +1458,7 @@ paths:
         - message
       summary: Delete Message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1452,6 +1501,7 @@ paths:
         - message
       summary: Send reaction to message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1498,6 +1548,7 @@ paths:
         - message
       summary: Edit message by message ID before 15 minutes
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1547,6 +1598,7 @@ paths:
         - message
       summary: Mark as read message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1591,6 +1643,7 @@ paths:
         - message
       summary: Star message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1635,6 +1688,7 @@ paths:
         - message
       summary: Unstar message
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: message_id
           schema:
@@ -1681,6 +1735,7 @@ paths:
       summary: Get list of chats
       description: Retrieve a list of chat conversations with their basic information
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: limit
           in: query
           schema:
@@ -1738,6 +1793,7 @@ paths:
       summary: Get messages from a specific chat
       description: Retrieve messages from a specific chat conversation with filtering options
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: chat_jid
           schema:
@@ -1825,6 +1881,7 @@ paths:
       summary: Label or unlabel a chat
       description: Apply or remove a label from a chat conversation
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: chat_jid
           schema:
@@ -1893,6 +1950,7 @@ paths:
       summary: Pin or unpin a chat
       description: Pin or unpin a chat conversation to the top of the chat list
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: chat_jid
           schema:
@@ -1952,6 +2010,7 @@ paths:
       summary: Set disappearing messages timer
       description: Set or disable disappearing messages for a chat. Valid timer values are 0 (off), 86400 (24h), 604800 (7d), 7776000 (90d).
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - in: path
           name: chat_jid
           schema:
@@ -1998,6 +2057,7 @@ paths:
         - group
       summary: Group Info
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: group_id
           in: query
           schema:
@@ -2029,6 +2089,8 @@ paths:
       tags:
         - group
       summary: Create group and add participant
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2076,6 +2138,7 @@ paths:
         - group
       summary: Get list of participants in a group
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: group_id
           in: query
           required: true
@@ -2107,6 +2170,8 @@ paths:
       tags:
         - group
       summary: Adding more participants to group
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2138,6 +2203,7 @@ paths:
         - group
       summary: Export group participants as CSV
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: group_id
           in: query
           required: true
@@ -2171,6 +2237,8 @@ paths:
       tags:
         - group
       summary: Remove participants from group
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2201,6 +2269,8 @@ paths:
       tags:
         - group
       summary: Promote participants to admin
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2231,6 +2301,8 @@ paths:
       tags:
         - group
       summary: Demote participants to member
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2261,6 +2333,8 @@ paths:
       tags:
         - group
       summary: Join group with link
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2297,6 +2371,7 @@ paths:
       summary: Get group information from invitation link
       description: Retrieve group information without joining the group using its invitation link
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: link
           in: query
           required: true
@@ -2330,6 +2405,7 @@ paths:
         - group
       summary: Get list of participant requests to join group
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: group_id
           in: query
           required: true
@@ -2362,6 +2438,8 @@ paths:
       tags:
         - group
       summary: Approve participant request to join group
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2406,6 +2484,8 @@ paths:
       tags:
         - group
       summary: Reject participant request to join group
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2450,6 +2530,8 @@ paths:
       tags:
         - group
       summary: Leave group
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2484,6 +2566,8 @@ paths:
       tags:
         - group
       summary: Set group photo
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           multipart/form-data:
@@ -2525,6 +2609,8 @@ paths:
       tags:
         - group
       summary: Set group name
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2569,6 +2655,8 @@ paths:
         - group
       summary: Set group locked status
       description: Lock/unlock group so only admins can modify group info
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2612,6 +2700,8 @@ paths:
         - group
       summary: Set group announce mode
       description: Enable/disable announce mode so only admins can send messages
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2655,6 +2745,8 @@ paths:
         - group
       summary: Set group topic
       description: Set or remove group topic/description
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2697,6 +2789,7 @@ paths:
         - group
       summary: Group Invite Link
       parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
         - name: group_id
           in: query
           schema:
@@ -2735,6 +2828,8 @@ paths:
       tags:
         - newsletter
       summary: Unfollow newsletter
+      parameters:
+        - $ref: '#/components/parameters/DeviceIdHeader'
       requestBody:
         content:
           application/json:
@@ -2769,10 +2864,14 @@ components:
     DeviceIdHeader:
       name: X-Device-Id
       in: header
-      required: true
-      description: Device identifier (required for all device-scoped endpoints).
+      required: false
+      description: |
+        Device identifier for multi-device support. Required when multiple devices are registered.
+        If only one device is registered, it will be used as the default.
+        Can also be provided as `device_id` query parameter.
       schema:
         type: string
+        example: 'my-device-id'
 
   securitySchemes:
     basicAuth:
