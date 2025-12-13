@@ -76,7 +76,7 @@ func handleImageMessage(ctx context.Context, evt *events.Message, client *whatsm
 	}
 }
 
-func handleAutoMarkRead(_ context.Context, evt *events.Message, client *whatsmeow.Client) {
+func handleAutoMarkRead(ctx context.Context, evt *events.Message, client *whatsmeow.Client) {
 	// Only mark read if auto-mark read is enabled and message is incoming
 	if !config.WhatsappAutoMarkRead || evt.Info.IsFromMe {
 		return
@@ -92,7 +92,7 @@ func handleAutoMarkRead(_ context.Context, evt *events.Message, client *whatsmeo
 	chat := evt.Info.Chat
 	sender := evt.Info.Sender
 
-	if err := client.MarkRead(context.Background(), messageIDs, timestamp, chat, sender); err != nil {
+	if err := client.MarkRead(ctx, messageIDs, timestamp, chat, sender); err != nil {
 		log.Warnf("Failed to mark message %s as read: %v", evt.Info.ID, err)
 	} else {
 		log.Debugf("Marked message %s as read", evt.Info.ID)
@@ -126,7 +126,9 @@ func handleWebhookForward(ctx context.Context, evt *events.Message, client *what
 	if len(config.WhatsappWebhook) > 0 &&
 		!strings.Contains(evt.Info.SourceString(), "broadcast") {
 		go func(e *events.Message, c *whatsmeow.Client) {
-			if err := forwardMessageToWebhook(ctx, c, e); err != nil {
+			webhookCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := forwardMessageToWebhook(webhookCtx, c, e); err != nil {
 				logrus.Error("Failed forward to webhook: ", err)
 			}
 		}(evt, client)

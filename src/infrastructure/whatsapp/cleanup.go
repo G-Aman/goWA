@@ -16,13 +16,13 @@ import (
 
 // CleanupDatabase removes the database file (SQLite) or deletes all devices (PostgreSQL) to prevent foreign key constraint issues
 func CleanupDatabase() error {
-	globalStateMu.RLock()
-	currentDB := db
-	currentKeysDB := keysDB
-	globalStateMu.RUnlock()
-
-	// Check if using PostgreSQL
+	// Check if using PostgreSQL - for PostgreSQL we can use RLock since we're not closing connections
 	if strings.HasPrefix(config.DBURI, "postgres:") {
+		globalStateMu.RLock()
+		currentDB := db
+		currentKeysDB := keysDB
+		globalStateMu.RUnlock()
+
 		logrus.Info("[CLEANUP] PostgreSQL detected - deleting all devices from database")
 
 		// Check if database is initialized
@@ -74,13 +74,24 @@ func CleanupDatabase() error {
 		return nil
 	}
 
-	// SQLite: Close database connections before removing the file
+	// SQLite: Hold write lock for entire cleanup to prevent race conditions
+	// Other goroutines must not access db/keysDB while we're closing and removing files
+	globalStateMu.Lock()
+	defer globalStateMu.Unlock()
+
 	logrus.Info("[CLEANUP] SQLite detected - closing database connections before file removal")
 
+	// Store references and clear globals immediately to prevent use-after-close
+	currentDB := db
+	currentKeysDB := keysDB
+	db = nil
+	keysDB = nil
+	cli = nil // Also clear client since it depends on db
+
 	// Close the main database connection
-	if db != nil {
+	if currentDB != nil {
 		logrus.Info("[CLEANUP] Closing main database connection")
-		if err := db.Close(); err != nil {
+		if err := currentDB.Close(); err != nil {
 			logrus.Errorf("[CLEANUP] Error closing main database: %v", err)
 			return fmt.Errorf("failed to close main database: %v", err)
 		}
@@ -88,9 +99,9 @@ func CleanupDatabase() error {
 	}
 
 	// Close keysDB if it exists and is separate from main db
-	if keysDB != nil && keysDB != db {
+	if currentKeysDB != nil && currentKeysDB != currentDB {
 		logrus.Info("[CLEANUP] Closing keysDB database connection")
-		if err := keysDB.Close(); err != nil {
+		if err := currentKeysDB.Close(); err != nil {
 			logrus.Errorf("[CLEANUP] Error closing keysDB: %v", err)
 			return fmt.Errorf("failed to close keysDB: %v", err)
 		}

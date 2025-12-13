@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aldinokemal/go-whatsapp-web-multidevice/config"
 	domainChatStorage "github.com/aldinokemal/go-whatsapp-web-multidevice/domains/chatstorage"
@@ -84,7 +85,9 @@ func handleDeleteForMe(ctx context.Context, evt *events.DeleteForMe, chatStorage
 	// Send webhook notification for delete event
 	if len(config.WhatsappWebhook) > 0 {
 		go func(c *whatsmeow.Client) {
-			if err := forwardDeleteToWebhook(ctx, evt, message, deviceID, c); err != nil {
+			webhookCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := forwardDeleteToWebhook(webhookCtx, evt, message, deviceID, c); err != nil {
 				log.Errorf("Failed to forward delete event to webhook: %v", err)
 			}
 		}(client)
@@ -190,7 +193,9 @@ func handleReceipt(ctx context.Context, evt *events.Receipt, deviceID string, cl
 	// Note: Receipt events are not rate limited as they are critical for message delivery status
 	if len(config.WhatsappWebhook) > 0 && sendReceipt {
 		go func(e *events.Receipt, c *whatsmeow.Client) {
-			if err := forwardReceiptToWebhook(ctx, e, deviceID, c); err != nil {
+			webhookCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := forwardReceiptToWebhook(webhookCtx, e, deviceID, c); err != nil {
 				logrus.Errorf("Failed to forward ack event to webhook: %v", err)
 			}
 		}(evt, client)
@@ -239,7 +244,9 @@ func handleGroupInfo(ctx context.Context, evt *events.GroupInfo, deviceID string
 	// Forward group info event to webhook if configured
 	if len(config.WhatsappWebhook) > 0 {
 		go func(e *events.GroupInfo, c *whatsmeow.Client) {
-			if err := forwardGroupInfoToWebhook(ctx, e, deviceID, c); err != nil {
+			webhookCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := forwardGroupInfoToWebhook(webhookCtx, e, deviceID, c); err != nil {
 				logrus.Errorf("Failed to forward group info event to webhook: %v", err)
 			}
 		}(evt, client)

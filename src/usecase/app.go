@@ -48,7 +48,7 @@ func (service *serviceApp) Login(ctx context.Context, deviceID string) (response
 	// Disconnect first to ensure QR flow starts cleanly.
 	client.Disconnect()
 
-	chImage := make(chan string)
+	chImage := make(chan string, 1) // Buffered to prevent goroutine leak
 	ch, err := client.GetQRChannel(ctx)
 	if err != nil {
 		logrus.Errorf("[LOGIN][%s] GetQRChannel failed: %v", deviceID, err)
@@ -64,6 +64,7 @@ func (service *serviceApp) Login(ctx context.Context, deviceID string) (response
 	}
 
 	go func() {
+		defer close(chImage) // Ensure channel is closed when done
 		for evt := range ch {
 			response.Code = evt.Code
 			response.Duration = evt.Timeout / time.Second / 2
@@ -71,14 +72,21 @@ func (service *serviceApp) Login(ctx context.Context, deviceID string) (response
 				qrPath := fmt.Sprintf("%s/scan-qr-%s.png", config.PathQrCode, fiberUtils.UUIDv4())
 				if err := qrcode.WriteFile(evt.Code, qrcode.Medium, 512, qrPath); err != nil {
 					logrus.Errorf("[LOGIN][%s] Error when write qr code to file: %v", deviceID, err)
+					continue // Skip sending if QR generation failed
 				}
-				go func() {
-					time.Sleep(response.Duration * time.Second)
-					if err := os.Remove(qrPath); err != nil && !os.IsNotExist(err) {
+				go func(path string, duration time.Duration) {
+					time.Sleep(duration * time.Second)
+					if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 						logrus.Errorf("[LOGIN][%s] error when remove qrImage file: %v", deviceID, err)
 					}
-				}()
-				chImage <- qrPath
+				}(qrPath, response.Duration)
+				// Use select to avoid blocking if context is canceled
+				select {
+				case chImage <- qrPath:
+				case <-ctx.Done():
+					logrus.Warnf("[LOGIN][%s] Context canceled while sending QR path", deviceID)
+					return
+				}
 			} else {
 				logrus.Errorf("[LOGIN][%s] error when get qrCode %s %v", deviceID, evt.Event, evt.Error)
 			}
@@ -91,7 +99,20 @@ func (service *serviceApp) Login(ctx context.Context, deviceID string) (response
 	}
 
 	instance.UpdateStateFromClient()
-	response.ImagePath = <-chImage
+
+	// Wait for QR image with timeout to prevent hanging
+	select {
+	case imagePath, ok := <-chImage:
+		if !ok {
+			return response, fmt.Errorf("QR channel closed without receiving image")
+		}
+		response.ImagePath = imagePath
+	case <-ctx.Done():
+		return response, ctx.Err()
+	case <-time.After(120 * time.Second):
+		return response, fmt.Errorf("timeout waiting for QR code")
+	}
+
 	return response, nil
 }
 
